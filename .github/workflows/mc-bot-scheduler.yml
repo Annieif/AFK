@@ -155,8 +155,8 @@ jobs:
           echo "Duration: ${DURATION}s"
           echo "Server: localhost:25568 (ViaProxy) -> $BOT_SERVER"
           echo "Bot: prefix=$PREFIX, nick=$NICK, count=$BOT_COUNT, delay=$BOT_DELAY_MIN-$BOT_DELAY_MAX ms"
-          # script 提供 PTY 解决 JLine, 输出直接写文件, 不通过 tee 管道避免缓冲丢失
-          timeout --foreground $DURATION script -qfc "java -jar mc-bots-1.2.17.jar -s localhost:25568 -p $PREFIX -c $BOT_COUNT -d $BOT_DELAY_MIN $BOT_DELAY_MAX --nicks nicks.txt" /dev/null > mc-bots.log 2>&1 || EXIT_CODE=$?
+          # script 提供 PTY 解决 JLine, 日志同时输出到控制台和文件
+          timeout --foreground $DURATION script -qfc "java -jar mc-bots-1.2.17.jar -s localhost:25568 -p $PREFIX -c $BOT_COUNT -d $BOT_DELAY_MIN $BOT_DELAY_MAX --nicks nicks.txt" /dev/null 2>&1 | tee mc-bots.log || EXIT_CODE=$?
           if [ "${EXIT_CODE:-0}" = "124" ]; then
             echo "mc-bots stopped after ${DURATION}s (timeout reached)"
           elif [ "${EXIT_CODE:-0}" != "0" ]; then
