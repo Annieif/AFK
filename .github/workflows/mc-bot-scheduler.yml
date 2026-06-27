@@ -82,6 +82,7 @@ jobs:
           config['target-address'] = target
           config['proxy-online-mode'] = False
           config['auth-method'] = 'NONE'
+          config['target-version'] = 'Auto Detect (1.7+ servers)'
 
           print(f"Set bind-address = 0.0.0.0:25568")
           print(f"Set target-address = {target}")
