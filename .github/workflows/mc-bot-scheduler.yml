@@ -2,14 +2,16 @@ name: Minecraft Bot AFK Scheduler
 
 on:
   schedule:
-    # 每天北京时间凌晨2:00 (UTC+8 -> UTC 18:00)
+    # 每天北京时间 2:00-4:00 (UTC+8 -> UTC 18:00)
     - cron: '0 18 * * *'
+    # 周一到周五北京时间 13:00-14:00 (UTC+8 -> UTC 5:00)
+    - cron: '0 5 * * 1-5'
   workflow_dispatch:
 
 jobs:
   afk-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 130
 
     steps:
       - name: Setup Java 21
@@ -82,23 +84,42 @@ jobs:
         run: |
           echo "nnieif" > nicks.txt
 
-      - name: Run mc-bots (AFK for ~59 minutes)
+      - name: Run mc-bots
         run: |
-          # timeout 3540秒 ≈ 59分钟, 在 2:01 到 3:00 之间保持在线
-          timeout 3540 java -jar mc-bots-1.2.17.jar \
+          # 根据当前 UTC 时间判断时段，确定运行时长
+          UTC_HOUR=$(date -u +%H)
+          if [ "$UTC_HOUR" = "18" ]; then
+            DURATION=7140  # 2:00-4:00 北京时间, ~119分钟
+            echo "Slot: 2:00-4:00 Beijing (2 hours)"
+          elif [ "$UTC_HOUR" = "5" ]; then
+            DURATION=3540  # 13:00-14:00 北京时间, ~59分钟
+            echo "Slot: 13:00-14:00 Beijing (1 hour)"
+          else
+            DURATION=3540  # 手动触发默认 1 小时
+            echo "Slot: manual trigger (1 hour default)"
+          fi
+          timeout $DURATION java -jar mc-bots-1.2.17.jar \
             -s localhost:25568 \
             -p A \
             -c 1 \
             --nicks nicks.txt \
-            -n || EXIT_CODE=$?
+            -n 2>&1 | tee mc-bots.log || EXIT_CODE=$?
           if [ "${EXIT_CODE:-0}" = "124" ]; then
-            echo "mc-bots stopped after 59 minutes (timeout reached)"
+            echo "mc-bots stopped after ${DURATION}s (timeout reached)"
           elif [ "${EXIT_CODE:-0}" != "0" ]; then
             echo "mc-bots exited with error code $EXIT_CODE"
             exit $EXIT_CODE
           else
             echo "mc-bots session ended"
           fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mc-bots-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: mc-bots.log
+          retention-days: 7
 
       - name: Cleanup
         if: always()
