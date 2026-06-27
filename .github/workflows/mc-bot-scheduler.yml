@@ -7,6 +7,11 @@ on:
     # 周一到周五北京时间 13:00-14:00 (UTC+8 -> UTC 5:00)
     - cron: '0 5 * * 1-5'
   workflow_dispatch:
+    inputs:
+      duration:
+        description: '运行时长 (分钟)'
+        required: false
+        default: '20'
 
 jobs:
   afk-bot:
@@ -86,18 +91,24 @@ jobs:
 
       - name: Run mc-bots
         run: |
-          # 根据当前 UTC 时间判断时段，确定运行时长
-          UTC_HOUR=$(date -u +%H)
-          if [ "$UTC_HOUR" = "18" ]; then
-            DURATION=7140  # 2:00-4:00 北京时间, ~119分钟
-            echo "Slot: 2:00-4:00 Beijing (2 hours)"
-          elif [ "$UTC_HOUR" = "5" ]; then
-            DURATION=3540  # 13:00-14:00 北京时间, ~59分钟
-            echo "Slot: 13:00-14:00 Beijing (1 hour)"
+          # 根据触发方式确定运行时长
+          if [ -n "${{ github.event.inputs.duration }}" ]; then
+            DURATION=$((${{ github.event.inputs.duration }} * 60))
+            echo "Slot: manual trigger (${{ github.event.inputs.duration }} minutes)"
           else
-            DURATION=3540  # 手动触发默认 1 小时
-            echo "Slot: manual trigger (1 hour default)"
+            UTC_HOUR=$(date -u +%H)
+            if [ "$UTC_HOUR" = "18" ]; then
+              DURATION=7140  # 2:00-4:00 北京时间, ~119分钟
+              echo "Slot: 2:00-4:00 Beijing (2 hours)"
+            elif [ "$UTC_HOUR" = "5" ]; then
+              DURATION=3540  # 13:00-14:00 北京时间, ~59分钟
+              echo "Slot: 13:00-14:00 Beijing (1 hour)"
+            else
+              DURATION=3540
+              echo "Slot: default (1 hour)"
+            fi
           fi
+          echo "Duration: ${DURATION}s"
           timeout $DURATION java -jar mc-bots-1.2.17.jar \
             -s localhost:25568 \
             -p A \
