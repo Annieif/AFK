@@ -8,15 +8,43 @@ on:
     - cron: '0 5 * * 1-5'
   workflow_dispatch:
     inputs:
+      name:
+        description: '机器人名称 (首字母作为前缀,其余作为nick)'
+        required: false
+        default: 'Annieif'
+      server:
+        description: '服务器地址 (host:port)'
+        required: false
+        default: 'nohair.top:25565'
+      count:
+        description: '机器人数量'
+        required: false
+        default: '1'
       duration:
         description: '运行时长 (分钟)'
         required: false
         default: '20'
+      delay_min:
+        description: '连接延迟最小值 (毫秒)'
+        required: false
+        default: '4000'
+      delay_max:
+        description: '连接延迟最大值 (毫秒)'
+        required: false
+        default: '5000'
 
 jobs:
   afk-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 130
+
+    env:
+      BOT_NAME: ${{ github.event.inputs.name || 'Annieif' }}
+      BOT_SERVER: ${{ github.event.inputs.server || 'nohair.top:25565' }}
+      BOT_COUNT: ${{ github.event.inputs.count || '1' }}
+      BOT_DURATION: ${{ github.event.inputs.duration || '' }}
+      BOT_DELAY_MIN: ${{ github.event.inputs.delay_min || '4000' }}
+      BOT_DELAY_MAX: ${{ github.event.inputs.delay_max || '5000' }}
 
     steps:
       - name: Setup Java 21
@@ -31,9 +59,9 @@ jobs:
 
       - name: Generate ViaProxy config
         run: |
-          cat > viaproxy.yml << 'EOF'
+          cat > viaproxy.yml << EOF
           bind-address: 0.0.0.0:25568
-          target-address: localhost:25565
+          target-address: $BOT_SERVER
           proxy-online-mode: false
           auth-method: NONE
           EOF
@@ -43,22 +71,22 @@ jobs:
           pip3 install pyyaml -q
           python3 << 'PYEOF'
           import yaml
+          import os
 
           with open('viaproxy.yml', 'r') as f:
               config = yaml.safe_load(f)
 
-          print("Original config keys:", list(config.keys()))
+          target = os.environ.get('BOT_SERVER', 'nohair.top:25565')
 
-          # ViaProxy 3.4.11 使用 address:port 合并格式
           config['bind-address'] = '0.0.0.0:25568'
-          config['target-address'] = 'nohair.top:25565'
+          config['target-address'] = target
           config['proxy-online-mode'] = False
           config['auth-method'] = 'NONE'
 
-          print("Set bind-address = 0.0.0.0:25568")
-          print("Set target-address = nohair.top:25565")
-          print("Set proxy-online-mode = False")
-          print("Set auth-method = NONE")
+          print(f"Set bind-address = 0.0.0.0:25568")
+          print(f"Set target-address = {target}")
+          print(f"Set proxy-online-mode = False")
+          print(f"Set auth-method = NONE")
 
           with open('viaproxy.yml', 'w') as f:
               yaml.dump(config, f, default_flow_style=False)
@@ -87,14 +115,21 @@ jobs:
 
       - name: Create nicks file
         run: |
-          echo "nnieif" > nicks.txt
+          # 从 BOT_NAME 提取 nick (去掉第一个字符作为前缀)
+          NICK="${BOT_NAME:1}"
+          PREFIX="${BOT_NAME:0:1}"
+          echo "$NICK" > nicks.txt
+          echo "Prefix: $PREFIX, Nick: $NICK"
 
       - name: Run mc-bots
         run: |
+          # 从 BOT_NAME 提取前缀和 nick
+          PREFIX="${BOT_NAME:0:1}"
+          NICK="${BOT_NAME:1}"
           # 根据触发方式确定运行时长
-          if [ -n "${{ github.event.inputs.duration }}" ]; then
-            DURATION=$((${{ github.event.inputs.duration }} * 60))
-            echo "Slot: manual trigger (${{ github.event.inputs.duration }} minutes)"
+          if [ -n "$BOT_DURATION" ]; then
+            DURATION=$(($BOT_DURATION * 60))
+            echo "Slot: manual trigger ($BOT_DURATION minutes)"
           else
             UTC_HOUR=$(date -u +%H)
             if [ "$UTC_HOUR" = "18" ]; then
@@ -109,10 +144,13 @@ jobs:
             fi
           fi
           echo "Duration: ${DURATION}s"
+          echo "Server: localhost:25568 (ViaProxy) -> $BOT_SERVER"
+          echo "Bot: prefix=$PREFIX, nick=$NICK, count=$BOT_COUNT, delay=$BOT_DELAY_MIN-$BOT_DELAY_MAX ms"
           timeout $DURATION java -jar mc-bots-1.2.17.jar \
             -s localhost:25568 \
-            -p A \
-            -c 1 \
+            -p "$PREFIX" \
+            -c "$BOT_COUNT" \
+            -d "$BOT_DELAY_MIN" "$BOT_DELAY_MAX" \
             --nicks nicks.txt \
             -n 2>&1 | tee mc-bots.log || EXIT_CODE=$?
           if [ "${EXIT_CODE:-0}" = "124" ]; then
