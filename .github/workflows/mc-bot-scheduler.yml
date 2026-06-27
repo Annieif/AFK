@@ -27,11 +27,11 @@ on:
       delay_min:
         description: '连接延迟最小值 (毫秒)'
         required: false
-        default: '4000'
+        default: '1000'
       delay_max:
         description: '连接延迟最大值 (毫秒)'
         required: false
-        default: '5000'
+        default: '3000'
 
 jobs:
   afk-bot:
@@ -147,7 +147,8 @@ jobs:
           echo "Server: localhost:25568 (ViaProxy) -> $BOT_SERVER"
           echo "Bot: prefix=$PREFIX, nick=$NICK, count=$BOT_COUNT, delay=$BOT_DELAY_MIN-$BOT_DELAY_MAX ms"
           # 使用 script 命令为 mc-bots 提供伪终端 (JLine 需要 TTY 才能正常工作)
-          timeout --foreground $DURATION script -qfc "java -jar mc-bots-1.2.17.jar -s localhost:25568 -p $PREFIX -c $BOT_COUNT -d $BOT_DELAY_MIN $BOT_DELAY_MAX --nicks nicks.txt -n" /dev/null 2>&1 | tee mc-bots.log || EXIT_CODE=$?
+          # 启用完整 listener (不带 -x/-m) 以获取详细的 join/chat 日志用于诊断
+          timeout --foreground $DURATION script -qfc "java -jar mc-bots-1.2.17.jar -s localhost:25568 -p $PREFIX -c $BOT_COUNT -d $BOT_DELAY_MIN $BOT_DELAY_MAX --nicks nicks.txt" /dev/null 2>&1 | tee mc-bots.log || EXIT_CODE=$?
           if [ "${EXIT_CODE:-0}" = "124" ]; then
             echo "mc-bots stopped after ${DURATION}s (timeout reached)"
           elif [ "${EXIT_CODE:-0}" != "0" ]; then
