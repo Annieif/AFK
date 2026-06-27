@@ -152,7 +152,7 @@ jobs:
             -c "$BOT_COUNT" \
             -d "$BOT_DELAY_MIN" "$BOT_DELAY_MAX" \
             --nicks nicks.txt \
-            -n 2>&1 | tee mc-bots.log || EXIT_CODE=$?
+            -n -x < /dev/null 2>&1 | tee mc-bots.log || EXIT_CODE=$?
           if [ "${EXIT_CODE:-0}" = "124" ]; then
             echo "mc-bots stopped after ${DURATION}s (timeout reached)"
           elif [ "${EXIT_CODE:-0}" != "0" ]; then
