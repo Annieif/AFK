@@ -1,0 +1,125 @@
+name: Minecraft Bot AFK Scheduler
+
+on:
+  schedule:
+    # 每天北京时间凌晨2:00 (UTC+8 -> UTC 18:00)
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  afk-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+
+    steps:
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Download ViaProxy
+        run: |
+          wget -q "https://github.com/ViaVersion/ViaProxy/releases/download/v3.4.11/ViaProxy-3.4.11.jar"
+
+      - name: Generate ViaProxy config
+        run: |
+          java -jar ViaProxy-3.4.11.jar config viaproxy.yml
+
+      - name: Configure ViaProxy
+        run: |
+          pip3 install pyyaml -q
+          python3 << 'PYEOF'
+          import yaml
+
+          with open('viaproxy.yml', 'r') as f:
+              config = yaml.safe_load(f)
+
+          print("Original config keys:", list(config.keys()))
+
+          # 定义配置映射: 优先使用的 key -> 备选 key -> 值
+          settings = {
+              ('bind-address', 'bindAddress'): '0.0.0.0',
+              ('bind-port', 'bindPort'): 25568,
+              ('target-address', 'targetAddress'): 'nohair.top',
+              ('target-port', 'targetPort'): 25565,
+          }
+
+          for (primary, alt), value in settings.items():
+              if primary in config:
+                  config[primary] = value
+                  print(f"Set {primary} = {value}")
+              elif alt in config:
+                  config[alt] = value
+                  print(f"Set {alt} = {value}")
+              else:
+                  print(f"WARNING: Neither {primary} nor {alt} found in config, adding {primary}")
+                  config[primary] = value
+
+          # 关闭在线模式认证 (mc-bots 使用离线模式)
+          for key in ('proxy-online-mode', 'proxyOnlineMode'):
+              if key in config:
+                  config[key] = False
+                  print(f"Set {key} = False")
+                  break
+
+          for key in ('auth-method', 'authMethod'):
+              if key in config:
+                  config[key] = 'NONE'
+                  print(f"Set {key} = NONE")
+                  break
+
+          with open('viaproxy.yml', 'w') as f:
+              yaml.dump(config, f, default_flow_style=False)
+
+          print('=== ViaProxy Config ===')
+          with open('viaproxy.yml', 'r') as f:
+              print(f.read())
+          PYEOF
+
+      - name: Start ViaProxy
+        run: |
+          java -Djava.awt.headless=true -jar ViaProxy-3.4.11.jar &
+          echo $! > viaproxy.pid
+          # 等待 ViaProxy 启动就绪
+          sleep 15
+          # 检查进程是否存活
+          if ! kill -0 $(cat viaproxy.pid) 2>/dev/null; then
+            echo "ViaProxy failed to start"
+            exit 1
+          fi
+          echo "ViaProxy started successfully"
+
+      - name: Download mc-bots
+        run: |
+          wget -q "https://github.com/crpmax/mc-bots/releases/download/1.2.17/mc-bots-1.2.17.jar"
+
+      - name: Create nicks file
+        run: |
+          echo "nnieif" > nicks.txt
+
+      - name: Run mc-bots (AFK for ~59 minutes)
+        run: |
+          # timeout 3540秒 ≈ 59分钟, 在 2:01 到 3:00 之间保持在线
+          timeout 3540 java -jar mc-bots-1.2.17.jar \
+            -s localhost:25568 \
+            -p A \
+            -c 1 \
+            --nicks nicks.txt \
+            -n || EXIT_CODE=$?
+          if [ "${EXIT_CODE:-0}" = "124" ]; then
+            echo "mc-bots stopped after 59 minutes (timeout reached)"
+          elif [ "${EXIT_CODE:-0}" != "0" ]; then
+            echo "mc-bots exited with error code $EXIT_CODE"
+            exit $EXIT_CODE
+          else
+            echo "mc-bots session ended"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f viaproxy.pid ]; then
+            kill $(cat viaproxy.pid) 2>/dev/null || true
+            echo "ViaProxy stopped"
+          fi
