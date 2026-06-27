@@ -42,7 +42,7 @@ jobs:
       BOT_NAME: ${{ github.event.inputs.name || 'Annieif' }}
       BOT_SERVER: ${{ github.event.inputs.server || 'nohair.top:25565' }}
       BOT_COUNT: ${{ github.event.inputs.count || '1' }}
-      BOT_DURATION: ${{ github.event.inputs.duration || '' }}
+      BOT_DURATION: ${{ github.event.inputs.duration || '20' }}
       BOT_DELAY_MIN: ${{ github.event.inputs.delay_min || '4000' }}
       BOT_DELAY_MAX: ${{ github.event.inputs.delay_max || '5000' }}
 
@@ -129,7 +129,7 @@ jobs:
           NICK="${BOT_NAME:1}"
           # 根据触发方式确定运行时长
           if [ -n "$BOT_DURATION" ]; then
-            DURATION=$(($BOT_DURATION * 60))
+            DURATION=$(awk "BEGIN {printf \"%.0f\", $BOT_DURATION * 60}")
             echo "Slot: manual trigger ($BOT_DURATION minutes)"
           else
             UTC_HOUR=$(date -u +%H)
