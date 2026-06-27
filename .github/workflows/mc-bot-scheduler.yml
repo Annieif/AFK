@@ -146,7 +146,7 @@ jobs:
           echo "Duration: ${DURATION}s"
           echo "Server: localhost:25568 (ViaProxy) -> $BOT_SERVER"
           echo "Bot: prefix=$PREFIX, nick=$NICK, count=$BOT_COUNT, delay=$BOT_DELAY_MIN-$BOT_DELAY_MAX ms"
-          timeout $DURATION java -jar mc-bots-1.2.17.jar \
+          timeout $DURATION java -Djline.terminal=jline.UnsupportedTerminal -jar mc-bots-1.2.17.jar \
             -s localhost:25568 \
             -p "$PREFIX" \
             -c "$BOT_COUNT" \
