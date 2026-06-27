@@ -24,7 +24,12 @@ jobs:
 
       - name: Generate ViaProxy config
         run: |
-          java -jar ViaProxy-3.4.11.jar config viaproxy.yml
+          cat > viaproxy.yml << 'EOF'
+          bind-address: 0.0.0.0:25568
+          target-address: localhost:25565
+          proxy-online-mode: false
+          auth-method: NONE
+          EOF
 
       - name: Configure ViaProxy
         run: |
@@ -37,37 +42,16 @@ jobs:
 
           print("Original config keys:", list(config.keys()))
 
-          # 定义配置映射: 优先使用的 key -> 备选 key -> 值
-          settings = {
-              ('bind-address', 'bindAddress'): '0.0.0.0',
-              ('bind-port', 'bindPort'): 25568,
-              ('target-address', 'targetAddress'): 'nohair.top',
-              ('target-port', 'targetPort'): 25565,
-          }
+          # ViaProxy 3.4.11 使用 address:port 合并格式
+          config['bind-address'] = '0.0.0.0:25568'
+          config['target-address'] = 'nohair.top:25565'
+          config['proxy-online-mode'] = False
+          config['auth-method'] = 'NONE'
 
-          for (primary, alt), value in settings.items():
-              if primary in config:
-                  config[primary] = value
-                  print(f"Set {primary} = {value}")
-              elif alt in config:
-                  config[alt] = value
-                  print(f"Set {alt} = {value}")
-              else:
-                  print(f"WARNING: Neither {primary} nor {alt} found in config, adding {primary}")
-                  config[primary] = value
-
-          # 关闭在线模式认证 (mc-bots 使用离线模式)
-          for key in ('proxy-online-mode', 'proxyOnlineMode'):
-              if key in config:
-                  config[key] = False
-                  print(f"Set {key} = False")
-                  break
-
-          for key in ('auth-method', 'authMethod'):
-              if key in config:
-                  config[key] = 'NONE'
-                  print(f"Set {key} = NONE")
-                  break
+          print("Set bind-address = 0.0.0.0:25568")
+          print("Set target-address = nohair.top:25565")
+          print("Set proxy-online-mode = False")
+          print("Set auth-method = NONE")
 
           with open('viaproxy.yml', 'w') as f:
               yaml.dump(config, f, default_flow_style=False)
@@ -79,7 +63,7 @@ jobs:
 
       - name: Start ViaProxy
         run: |
-          java -Djava.awt.headless=true -jar ViaProxy-3.4.11.jar &
+          java -Djava.awt.headless=true -jar ViaProxy-3.4.11.jar config viaproxy.yml &
           echo $! > viaproxy.pid
           # 等待 ViaProxy 启动就绪
           sleep 15
