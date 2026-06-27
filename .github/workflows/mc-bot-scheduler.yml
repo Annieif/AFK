@@ -40,7 +40,7 @@ jobs:
 
     env:
       BOT_NAME: ${{ github.event.inputs.name || 'Annieif' }}
-      BOT_SERVER: ${{ github.event.inputs.server || 'nohair.top:25565' }}
+      BOT_SERVER: ${{ github.event.inputs.server || 's4.mcstory.cc.:59969' }}
       BOT_COUNT: ${{ github.event.inputs.count || '1' }}
       BOT_DURATION: ${{ github.event.inputs.duration || '20' }}
       BOT_DELAY_MIN: ${{ github.event.inputs.delay_min || '4000' }}
@@ -76,18 +76,26 @@ jobs:
           with open('viaproxy.yml', 'r') as f:
               config = yaml.safe_load(f)
 
-          target = os.environ.get('BOT_SERVER', 'nohair.top:25565')
+          target = os.environ.get('BOT_SERVER', 's4.mcstory.cc.:59969')
 
           config['bind-address'] = '0.0.0.0:25568'
           config['target-address'] = target
           config['proxy-online-mode'] = False
           config['auth-method'] = 'NONE'
           config['target-version'] = 'Auto Detect (1.7+ servers)'
+          config['connect-timeout'] = 8000
+          config['chat-signing'] = True
+          config['compression-threshold'] = 256
+          config['fake-accept-resource-packs'] = True
+          config['simple-voice-chat-support'] = True
+          config['rewrite-handshake-packet'] = True
+          config['rewrite-transfer-packets'] = True
 
           print(f"Set bind-address = 0.0.0.0:25568")
           print(f"Set target-address = {target}")
           print(f"Set proxy-online-mode = False")
           print(f"Set auth-method = NONE")
+          print(f"Set target-version = Auto Detect (1.7+ servers)")
 
           with open('viaproxy.yml', 'w') as f:
               yaml.dump(config, f, default_flow_style=False)
