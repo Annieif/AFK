@@ -2,10 +2,10 @@ name: Minecraft Bot AFK Scheduler
 
 on:
   schedule:
-# 每月1~5日北京时间 0:00-5:00 (UTC+8 -> UTC 16:00)
-    - cron: '0 16 1-5 * *'
-    # 每月1~5日北京时间 0:00-5:00 (UTC+8 -> UTC 21:00)
-    - cron: '0 21 1-5 * *'
+# 每月1-5日北京时间 0:00-5:00 (UTC+8 -> UTC 16:00)
+    # 31天月份: 31日16:00UTC = 1日0:00北京时间
+    # 其他月份: 1日16:00UTC = 2日0:00北京时间 (少一天)
+    - cron: '0 16 31,1,2,3,4 * *'
   workflow_dispatch:
     inputs:
       name:
