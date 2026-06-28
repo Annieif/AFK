@@ -2,10 +2,10 @@ name: Minecraft Bot AFK Scheduler
 
 on:
   schedule:
-    # 每天北京时间 2:00-4:00 (UTC+8 -> UTC 18:00)
-    - cron: '0 18 * * *'
-    # 周一到周五北京时间 13:00-14:00 (UTC+8 -> UTC 5:00)
-    - cron: '0 5 * * 1-5'
+    # 每月1-3日北京时间 0:00-5:00 (UTC+8 -> UTC 16:00)
+    # 31天月份: 31日16:00UTC = 1日0:00北京时间
+    # 其他月份: 1日16:00UTC = 2日0:00北京时间 (少一天)
+    - cron: '0 16 31,1,2 * *'
   workflow_dispatch:
     inputs:
       name:
@@ -36,7 +36,7 @@ on:
 jobs:
   afk-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 130
+    timeout-minutes: 310
 
     env:
       BOT_NAME: ${{ github.event.inputs.name || 'Annieif' }}
@@ -140,17 +140,8 @@ jobs:
             DURATION=$(awk "BEGIN {printf \"%.0f\", $BOT_DURATION * 60}")
             echo "Slot: manual trigger ($BOT_DURATION minutes)"
           else
-            UTC_HOUR=$(date -u +%H)
-            if [ "$UTC_HOUR" = "18" ]; then
-              DURATION=7140  # 2:00-4:00 北京时间, ~119分钟
-              echo "Slot: 2:00-4:00 Beijing (2 hours)"
-            elif [ "$UTC_HOUR" = "5" ]; then
-              DURATION=3540  # 13:00-14:00 北京时间, ~59分钟
-              echo "Slot: 13:00-14:00 Beijing (1 hour)"
-            else
-              DURATION=3540
-              echo "Slot: default (1 hour)"
-            fi
+            DURATION=17700
+            echo "Slot: 0:00-5:00 Beijing (5 hours)"
           fi
           echo "Duration: ${DURATION}s"
           echo "Server: localhost:25568 (ViaProxy) -> $BOT_SERVER"
